@@ -18,6 +18,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check out pinned TypeScript golden references
+        uses: actions/checkout@v4
+        with:
+          repository: creativeamantech/mahavtaarpanchanga
+          ref: 088035ddea6c9757f09e77fb4f30bd2657ef2d32
+          path: reference-source
+      - name: Validate immutable reference corpus
+        run: python scripts/validate_reference_corpus.py reference-source/reference/panchanga/v1
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
