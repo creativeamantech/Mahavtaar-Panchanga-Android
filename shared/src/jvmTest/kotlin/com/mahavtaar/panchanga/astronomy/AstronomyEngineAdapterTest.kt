@@ -8,38 +8,29 @@ import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AstronomyEngineAdapterTest {
     @Test
-    fun bhopalDayEventsMatchTypeScriptGoldenReference() {
-        val fixture = File(System.getProperty("referenceCorpusDir"), "bhopal-2026-11-19.json")
-        assertTrue(fixture.isFile, "Pinned TypeScript reference fixture is missing: $fixture")
-        val json = fixture.readText()
+    fun baselineDayEventsMatchTypeScriptGoldenReferencesAcrossTenCities() {
+        val corpusDir = File(System.getProperty("referenceCorpusDir"))
+        assertTrue(corpusDir.isDirectory, "Pinned TypeScript reference corpus is missing: $corpusDir")
 
-        val expected = mapOf(
-            "previous_sunrise_ms" to jsonLong(json, "previous_sunrise_ms"),
-            "previous_sunset_ms" to jsonLong(json, "previous_sunset_ms"),
-            "sunrise_ms" to jsonLong(json, "sunrise_ms"),
-            "sunset_ms" to jsonLong(json, "sunset_ms"),
-            "next_sunrise_ms" to jsonLong(json, "next_sunrise_ms"),
+        val cities = listOf(
+            "bhopal", "indore", "ujjain", "varanasi", "delhi",
+            "chennai", "london", "new-york", "singapore", "sydney",
         )
+        val dates = listOf("2026-03-20", "2026-06-21", "2026-11-19")
+        val fixtureFiles = cities.flatMap { city ->
+            dates.map { date -> File(corpusDir, "$city-$date.json") }
+        }
 
-        val actual = AstronomyEngineAdapter().calculateDayEvents(
-            date = LocalDate.parse("2026-11-19"),
-            zoneId = ZoneId.of("Asia/Kolkata"),
-            latitude = 23.2599,
-            longitude = 77.4126,
-        )
-
-        assertEpochNear("previous sunrise", expected.getValue("previous_sunrise_ms"), actual.previousSunrise?.toEpochMilli())
-        assertEpochNear("previous sunset", expected.getValue("previous_sunset_ms"), actual.previousSunset?.toEpochMilli())
-        assertEpochNear("sunrise", expected.getValue("sunrise_ms"), actual.sunrise?.toEpochMilli())
-        assertEpochNear("sunset", expected.getValue("sunset_ms"), actual.sunset?.toEpochMilli())
-        assertEpochNear("next sunrise", expected.getValue("next_sunrise_ms"), actual.nextSunrise?.toEpochMilli())
-        val timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss")
-        assertEqualsFixtureTime(json, "moonrise", actual.moonrise, ZoneId.of("Asia/Kolkata"), timeFormat)
-        assertEqualsFixtureTime(json, "moonset", actual.moonset, ZoneId.of("Asia/Kolkata"), timeFormat)
+        assertEquals(30, fixtureFiles.size)
+        fixtureFiles.forEach { fixture ->
+            assertTrue(fixture.isFile, "Missing baseline fixture: " + fixture.name)
+            assertFixtureMatches(fixture)
+        }
     }
 
     @Test
@@ -56,28 +47,80 @@ class AstronomyEngineAdapterTest {
         assertTrue(error is IllegalArgumentException)
     }
 
-    private fun assertEqualsFixtureTime(
+    private fun assertFixtureMatches(fixture: File) {
+        val json = fixture.readText()
+        val date = LocalDate.parse(jsonString(json, "date"))
+        val zoneId = ZoneId.of(jsonString(json, "timezone"))
+        val latitude = jsonDouble(json, "latitude")
+        val longitude = jsonDouble(json, "longitude")
+
+        val actual = AstronomyEngineAdapter().calculateDayEvents(
+            date = date,
+            zoneId = zoneId,
+            latitude = latitude,
+            longitude = longitude,
+        )
+
+        listOf(
+            "previous_sunrise_ms" to actual.previousSunrise?.toEpochMilli(),
+            "previous_sunset_ms" to actual.previousSunset?.toEpochMilli(),
+            "sunrise_ms" to actual.sunrise?.toEpochMilli(),
+            "sunset_ms" to actual.sunset?.toEpochMilli(),
+            "next_sunrise_ms" to actual.nextSunrise?.toEpochMilli(),
+        ).forEach { (key, value) ->
+            assertEpochNear(fixture.name + ": " + key, jsonLong(json, key), value)
+        }
+
+        val timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss")
+        assertFixtureMoonEvent(json, fixture.name, "moonrise", actual.moonrise, zoneId, timeFormat)
+        assertFixtureMoonEvent(json, fixture.name, "moonset", actual.moonset, zoneId, timeFormat)
+    }
+
+    private fun assertFixtureMoonEvent(
         json: String,
+        fixtureName: String,
         key: String,
         actual: java.time.Instant?,
         zoneId: ZoneId,
         formatter: DateTimeFormatter,
     ) {
-        val expected = Regex("\\\"$key\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"")
-            .find(json)?.groupValues?.get(1) ?: error("Missing fixture field: $key")
-        assertNotNull(actual, "$key was not found by the Kotlin Astronomy Engine")
-        assertEquals(expected, formatter.format(actual.atZone(zoneId)), "$key differs from TypeScript reference")
+        val status = jsonString(json, key + "_status")
+        val expected = jsonNullableString(json, key)
+        if (status == "ok" && expected != null) {
+            assertNotNull(actual, fixtureName + ": " + key + " was not found by Kotlin")
+            assertEquals(expected, formatter.format(actual.atZone(zoneId)), fixtureName + ": " + key + " differs")
+        } else {
+            assertNull(actual, fixtureName + ": unexpected " + key + " when source status is " + status)
+        }
     }
 
-    private fun jsonLong(json: String, key: String): Long {
-        val match = Regex("\\\"$key\\\"\\s*:\\s*(-?\\d+)").find(json)
-        return match?.groupValues?.get(1)?.toLong() ?: error("Missing numeric fixture field: $key")
+    private fun jsonString(json: String, key: String): String =
+        Regex("\"$key\"\\s*:\\s*\"([^\"]+)\"")
+            .find(json)?.groupValues?.get(1) ?: error("Missing string fixture field: " + key)
+
+    private fun jsonNullableString(json: String, key: String): String? {
+        val match = Regex("\"$key\"\\s*:\\s*(null|\"([^\"]*)\")").find(json)
+            ?: error("Missing nullable string fixture field: " + key)
+        return match.groupValues[2].ifEmpty { null }
     }
+
+    private fun jsonDouble(json: String, key: String): Double =
+        Regex("\"$key\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)")
+            .find(json)?.groupValues?.get(1)?.toDouble()
+            ?: error("Missing numeric fixture field: " + key)
+
+    private fun jsonLong(json: String, key: String): Long =
+        Regex("\"$key\"\\s*:\\s*(-?\\d+)")
+            .find(json)?.groupValues?.get(1)?.toLong()
+            ?: error("Missing integer fixture field: " + key)
 
     private fun assertEpochNear(label: String, expected: Long, actual: Long?) {
-        assertNotNull(actual, "$label was not found by the Kotlin Astronomy Engine")
+        assertNotNull(actual, label + " was not found by Kotlin Astronomy Engine")
         val difference = abs(actual - expected)
-        assertTrue(difference <= MAX_EVENT_DIFFERENCE_MILLIS, "$label differs by $difference ms (expected=$expected, actual=$actual)")
+        assertTrue(
+            difference <= MAX_EVENT_DIFFERENCE_MILLIS,
+            label + " differs by " + difference + " ms (expected=" + expected + ", actual=" + actual + ")",
+        )
     }
 
     private companion object {
