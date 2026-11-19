@@ -229,9 +229,47 @@ class AstronomyEngineAdapterTest {
     }
 
     private fun jsonNullableLong(json: String, key: String): Long? {
-        val match = Regex("\\\"$key\\\"\\s*:\\s*(null|-?\\d+(?:\\.\\d+)?)").find(json)
-            ?: return null
-        return match.groupValues[1].takeUnless { it == "null" }?.toDouble()?.toLong()
+        val value = jsonTopLevelValue(json, key) ?: return null
+        return value.takeUnless { it == "null" }?.toDouble()?.toLong()
+    }
+
+    private fun jsonTopLevelValue(json: String, key: String): String? {
+        var depth = 0
+        var index = 0
+        while (index < json.length) {
+            val character = json[index]
+            if (character == '"') {
+                val keyStart = index + 1
+                var end = keyStart
+                var escaped = false
+                while (end < json.length) {
+                    val current = json[end]
+                    if (escaped) escaped = false
+                    else if (current == '\\\\') escaped = true
+                    else if (current == '"') break
+                    end++
+                }
+                if (depth == 0 && end < json.length && json.substring(keyStart, end) == key) {
+                    var valueStart = end + 1
+                    while (valueStart < json.length && json[valueStart].isWhitespace()) valueStart++
+                    if (valueStart < json.length && json[valueStart] == ':') {
+                        valueStart++
+                        while (valueStart < json.length && json[valueStart].isWhitespace()) valueStart++
+                        var valueEnd = valueStart
+                        while (valueEnd < json.length && json[valueEnd] != ',' && json[valueEnd] != '}') valueEnd++
+                        return json.substring(valueStart, valueEnd).trim()
+                    }
+                }
+                index = end + 1
+                continue
+            }
+            when (character) {
+                '{', '[' -> depth++
+                '}', ']' -> depth--
+            }
+            index++
+        }
+        return null
     }
 
     private fun assertEpochNullableNear(label: String, expected: Long?, actual: Double?) {
