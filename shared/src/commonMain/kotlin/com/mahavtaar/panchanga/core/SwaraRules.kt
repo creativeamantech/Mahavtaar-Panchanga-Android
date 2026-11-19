@@ -58,9 +58,14 @@ fun getTithiSwaraRule(cycleNumber: Int): TithiSwaraRule {
 }
 
 /**
- * Nakshatra alignment rule from src/lib/nakshatraSwaraEngine.ts.
- * Rashi numbering is 1..12; odd signs begin with Pingala, even with Ida.
+ * Canonical parent-Rashi mapping copied from src/lib/nakshatraSwaraEngine.ts.
+ * Abhijit (28) is assigned to Capricorn (10), matching the active TypeScript table.
  */
+private val NAKSHATRA_PARENT_RASHI = listOf(
+    1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6, 6,
+    7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 12, 12, 10,
+)
+
 data class NakshatraSwaraRule(
     val nakshatraNumber: Int,
     val rashiNumber: Int,
@@ -68,9 +73,9 @@ data class NakshatraSwaraRule(
     val endNadi: Nadi,
 )
 
-fun getNakshatraSwaraRule(nakshatraNumber: Int, rashiNumber: Int): NakshatraSwaraRule {
+fun getNakshatraSwaraRule(nakshatraNumber: Int): NakshatraSwaraRule {
     require(nakshatraNumber in 1..28) { "Nakshatra number must be between 1 and 28." }
-    require(rashiNumber in 1..12) { "Rashi number must be between 1 and 12." }
+    val rashiNumber = NAKSHATRA_PARENT_RASHI[nakshatraNumber - 1]
     val start = if (rashiNumber % 2 == 1) Nadi.PINGALA else Nadi.IDA
     return NakshatraSwaraRule(nakshatraNumber, rashiNumber, start, start.opposite())
 }
