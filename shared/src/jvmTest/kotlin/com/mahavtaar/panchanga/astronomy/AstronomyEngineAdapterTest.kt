@@ -3,8 +3,10 @@ package com.mahavtaar.panchanga.astronomy
 import java.io.File
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -35,8 +37,9 @@ class AstronomyEngineAdapterTest {
         assertEpochNear("sunrise", expected.getValue("sunrise_ms"), actual.sunrise?.toEpochMilli())
         assertEpochNear("sunset", expected.getValue("sunset_ms"), actual.sunset?.toEpochMilli())
         assertEpochNear("next sunrise", expected.getValue("next_sunrise_ms"), actual.nextSunrise?.toEpochMilli())
-        assertEpochNear("moonrise", jsonLong(json, "moonrise_ms"), actual.moonrise?.toEpochMilli())
-        assertEpochNear("moonset", jsonLong(json, "moonset_ms"), actual.moonset?.toEpochMilli())
+        val timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss")
+        assertEqualsFixtureTime(json, "moonrise", actual.moonrise, ZoneId.of("Asia/Kolkata"), timeFormat)
+        assertEqualsFixtureTime(json, "moonset", actual.moonset, ZoneId.of("Asia/Kolkata"), timeFormat)
     }
 
     @Test
@@ -51,6 +54,19 @@ class AstronomyEngineAdapterTest {
         }.exceptionOrNull()
         assertNotNull(error)
         assertTrue(error is IllegalArgumentException)
+    }
+
+    private fun assertEqualsFixtureTime(
+        json: String,
+        key: String,
+        actual: java.time.Instant?,
+        zoneId: ZoneId,
+        formatter: DateTimeFormatter,
+    ) {
+        val expected = Regex("\\\"$key\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"")
+            .find(json)?.groupValues?.get(1) ?: error("Missing fixture field: $key")
+        assertNotNull(actual, "$key was not found by the Kotlin Astronomy Engine")
+        assertEquals(expected, formatter.format(actual.atZone(zoneId)), "$key differs from TypeScript reference")
     }
 
     private fun jsonLong(json: String, key: String): Long {
