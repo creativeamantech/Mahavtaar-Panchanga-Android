@@ -25,10 +25,23 @@ class SwaraRulesTest {
     }
 
     @Test
-    fun nakshatraNadiUsesParentRashiParity() {
-        assertEquals(Nadi.PINGALA, getNakshatraSwaraRule(1, 1).startNadi)
-        assertEquals(Nadi.IDA, getNakshatraSwaraRule(4, 2).startNadi)
-        assertEquals(Nadi.PINGALA, getNakshatraSwaraRule(28, 11).startNadi)
+    fun nakshatraRulesUseCanonicalParentRashiMapping() {
+        assertEquals(1, getNakshatraSwaraRule(1).rashiNumber)
+        assertEquals(Nadi.PINGALA, getNakshatraSwaraRule(1).startNadi)
+        assertEquals(2, getNakshatraSwaraRule(4).rashiNumber)
+        assertEquals(Nadi.IDA, getNakshatraSwaraRule(4).startNadi)
+        assertEquals(10, getNakshatraSwaraRule(28).rashiNumber)
+        assertEquals(Nadi.IDA, getNakshatraSwaraRule(28).startNadi)
+        for (number in 1..28) {
+            val rule = getNakshatraSwaraRule(number)
+            assertEquals(rule.startNadi.opposite(), rule.endNadi)
+        }
+    }
+
+    @Test
+    fun rejectsInvalidNakshatraNumber() {
+        assertFailsWith<IllegalArgumentException> { getNakshatraSwaraRule(0) }
+        assertFailsWith<IllegalArgumentException> { getNakshatraSwaraRule(29) }
     }
 
     @Test
