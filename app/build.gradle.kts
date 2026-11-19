@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.mahavtaar.panchanga"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.mahavtaar.panchanga"
