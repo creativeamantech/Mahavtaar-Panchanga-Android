@@ -33,6 +33,51 @@ class AstronomyEngineAdapterTest {
         }
     }
 
+
+    @Test
+    fun navagrahaPositionsMatchTypeScriptGoldenReferencesAcrossTenCities() {
+        val corpusDir = File(System.getProperty("referenceCorpusDir"))
+        val cities = listOf(
+            "bhopal", "indore", "ujjain", "varanasi", "delhi",
+            "chennai", "london", "new-york", "singapore", "sydney",
+        )
+        val dates = listOf("2026-03-20", "2026-06-21", "2026-11-19")
+        val fixtureFiles = cities.flatMap { city ->
+            dates.map { date -> File(corpusDir, "$city-$date.json") }
+        }
+
+        fixtureFiles.forEach { fixture ->
+            assertTrue(fixture.isFile, "Missing planetary fixture: " + fixture.name)
+            val json = fixture.readText()
+            val expectedSunrise = jsonLong(json, "sunrise_ms")
+            val ayanamsa = jsonDouble(json, "ayanamsa_degrees")
+            val expectedPlanets = jsonObjects(json, "planets").associate { planet ->
+                jsonString(planet, "id") to planet
+            }
+            val actualPlanets = PlanetaryPositionAdapter()
+                .calculateAt(expectedSunrise, ayanamsa)
+                .associateBy { it.id }
+
+            assertEquals(
+                setOf("sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu"),
+                expectedPlanets.keys,
+                fixture.name + ": source Navagraha set changed",
+            )
+            assertEquals(expectedPlanets.keys, actualPlanets.keys, fixture.name + ": Kotlin Navagraha set differs")
+
+            expectedPlanets.forEach { (id, expectedJson) ->
+                val actual = actualPlanets.getValue(id)
+                val expectedTropical = jsonDouble(expectedJson, "longitude")
+                val expectedSidereal = jsonDouble(expectedJson, "siderealLongitude")
+                val expectedRetrograde = jsonBoolean(expectedJson, "isRetrograde")
+
+                assertDegreesNear(fixture.name + ": " + id + " tropical", expectedTropical, actual.tropicalLongitude)
+                assertDegreesNear(fixture.name + ": " + id + " sidereal", expectedSidereal, actual.siderealLongitude)
+                assertEquals(expectedRetrograde, actual.isRetrograde, fixture.name + ": " + id + " retrograde flag differs")
+            }
+        }
+    }
+
     @Test
     fun invalidGeographicCoordinatesAreRejected() {
         val error = runCatching {
@@ -114,6 +159,27 @@ class AstronomyEngineAdapterTest {
             .find(json)?.groupValues?.get(1)?.toLong()
             ?: error("Missing integer fixture field: " + key)
 
+
+    private fun jsonObjects(json: String, key: String): List<String> {
+        val array = Regex("\\\"$key\\\"\\s*:\\s*\\[(.*?)]", setOf(RegexOption.DOT_MATCHES_ALL))
+            .find(json)?.groupValues?.get(1) ?: error("Missing array fixture field: " + key)
+        return Regex("\\{([^{}]*)\\}", setOf(RegexOption.DOT_MATCHES_ALL))
+            .findAll(array).map { it.groupValues[1] }.toList()
+    }
+
+    private fun jsonBoolean(json: String, key: String): Boolean =
+        Regex("\\\"$key\\\"\\s*:\\s*(true|false)")
+            .find(json)?.groupValues?.get(1)?.toBoolean()
+            ?: error("Missing boolean fixture field: " + key)
+
+    private fun assertDegreesNear(label: String, expected: Double, actual: Double) {
+        val difference = abs(actual - expected)
+        assertTrue(
+            difference <= MAX_LONGITUDE_DIFFERENCE_DEGREES,
+            label + " differs by " + difference + " degrees (expected=" + expected + ", actual=" + actual + ")",
+        )
+    }
+
     private fun assertEpochNear(label: String, expected: Long, actual: Long?) {
         assertNotNull(actual, label + " was not found by Kotlin Astronomy Engine")
         val difference = abs(actual - expected)
@@ -125,5 +191,6 @@ class AstronomyEngineAdapterTest {
 
     private companion object {
         const val MAX_EVENT_DIFFERENCE_MILLIS = 1_500L
+        const val MAX_LONGITUDE_DIFFERENCE_DEGREES = 0.000001
     }
 }
