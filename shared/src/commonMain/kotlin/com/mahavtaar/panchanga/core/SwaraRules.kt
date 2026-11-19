@@ -81,6 +81,7 @@ data class SwaraEvent(
     val startTimeMs: Double,
     val endTimeMs: Double,
     val durationMs: Double,
+    val hasOverlap: Boolean,
     val isActive: Boolean,
 )
 
@@ -97,13 +98,18 @@ fun createTithiSwaraEvents(
     require(tithiStartMs < tithiEndMs) { "Tithi end must be after tithi start." }
     val rule = getTithiSwaraRule(tithiCycleNumber)
     val hourMs = 3_600_000.0
-    val startEnd = minOf(tithiStartMs + hourMs, tithiEndMs)
-    val endStart = maxOf(tithiEndMs - hourMs, tithiStartMs)
+    val startEnd = tithiStartMs + hourMs
+    val endStart = tithiEndMs - hourMs
+    val hasOverlap = tithiEndMs - tithiStartMs < 2.0 * hourMs
     return listOf(
-        SwaraEvent(SwaraEventType.START, rule.startNadi, tithiStartMs, startEnd, startEnd - tithiStartMs,
-            nowMs >= tithiStartMs && nowMs < startEnd),
-        SwaraEvent(SwaraEventType.END, rule.endNadi, endStart, tithiEndMs, tithiEndMs - endStart,
-            nowMs >= endStart && nowMs < tithiEndMs),
+        SwaraEvent(
+            SwaraEventType.START, rule.startNadi, tithiStartMs, startEnd, hourMs, hasOverlap,
+            nowMs >= tithiStartMs && nowMs < startEnd,
+        ),
+        SwaraEvent(
+            SwaraEventType.END, rule.endNadi, endStart, tithiEndMs, hourMs, hasOverlap,
+            nowMs >= endStart && nowMs < tithiEndMs,
+        ),
     )
 }
 
