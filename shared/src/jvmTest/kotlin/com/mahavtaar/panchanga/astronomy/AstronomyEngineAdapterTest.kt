@@ -153,6 +153,41 @@ class AstronomyEngineAdapterTest {
         }
     }
 
+
+    @Test
+    fun combinedPanchangaSnapshotMatchesBhopalReferenceFixture() {
+        val fixture = File(System.getProperty("referenceCorpusDir"), "bhopal-2026-11-19.json")
+        val json = fixture.readText()
+        val mode = AyanamsaMode.valueOf(jsonString(json, "coordinateSelection").uppercase())
+        val snapshot = PanchangaCalculationAdapter().calculate(
+            date = LocalDate.parse(jsonString(json, "date")),
+            zoneId = ZoneId.of(jsonString(json, "timezone")),
+            latitude = jsonDouble(json, "latitude"),
+            longitude = jsonDouble(json, "longitude"),
+            coordinateSelection = mode,
+        )
+
+        assertEpochNear("combined sunrise", jsonLong(json, "sunrise_ms"), snapshot.events.sunrise?.toEpochMilli())
+        assertEpochNear("combined sunset", jsonLong(json, "sunset_ms"), snapshot.events.sunset?.toEpochMilli())
+        assertEpochNear("combined next sunrise", jsonLong(json, "next_sunrise_ms"), snapshot.events.nextSunrise?.toEpochMilli())
+        assertDegreesNear("combined ayanamsa", jsonDouble(json, "ayanamsa_degrees"), snapshot.ayanamsaDegrees)
+        assertSegmentsMatch(json, fixture.name, "tithi", snapshot.tithi)
+        assertSegmentsMatch(json, fixture.name, "nakshatra", snapshot.nakshatra)
+        assertSegmentsMatch(json, fixture.name, "yoga", snapshot.yoga)
+        assertSegmentsMatch(json, fixture.name, "karana", snapshot.karana)
+
+        val expectedPlanets = jsonObjects(json, "planets").associate { planet ->
+            jsonString(planet, "id") to planet
+        }
+        val actualPlanets = snapshot.planetaryPositions.associateBy { it.id }
+        expectedPlanets.forEach { (id, expected) ->
+            val actual = actualPlanets.getValue(id)
+            assertDegreesNear(fixture.name + ": combined " + id + " tropical", jsonDouble(expected, "longitude"), actual.tropicalLongitude)
+            assertDegreesNear(fixture.name + ": combined " + id + " sidereal", jsonDouble(expected, "siderealLongitude"), actual.siderealLongitude)
+            assertEquals(jsonBoolean(expected, "isRetrograde"), actual.isRetrograde)
+        }
+    }
+
     @Test
     fun invalidGeographicCoordinatesAreRejected() {
         val error = runCatching {
