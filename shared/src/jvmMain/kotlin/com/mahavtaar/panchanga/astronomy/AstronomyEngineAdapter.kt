@@ -85,7 +85,7 @@ class AstronomyEngineAdapter {
             it.toEpochMilli() in midnightMs until endOfReferenceDayMs
         }
         val moonset = moonsetCandidate?.toInstantOrNull()?.takeIf {
-            it.toEpochMilli() in midnightMs until nextMidnightMs
+            it.toEpochMilli() in midnightMs until endOfReferenceDayMs
         }
 
         return AstronomicalDayEvents(
