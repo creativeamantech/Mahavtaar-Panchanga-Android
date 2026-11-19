@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.mahavtaar.panchanga"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.mahavtaar.panchanga"
@@ -28,7 +28,7 @@ android {
 dependencies {
     implementation(project(":shared"))
 
-    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
+    val composeBom = platform("androidx.compose:compose-bom:2026.07.00")
     implementation(composeBom)
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.compose.material3:material3")
