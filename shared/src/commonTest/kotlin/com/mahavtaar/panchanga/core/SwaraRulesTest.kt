@@ -48,9 +48,13 @@ class SwaraRulesTest {
     }
 
     @Test
-    fun shortTithiWindowsAreClampedToTheActualTithi() {
+    fun shortTithiWindowsKeepFullHourAndReportOverlap() {
         val events = createTithiSwaraEvents(1, 0.0, 1_800_000.0, 900_000.0)
-        assertEquals(1_800_000.0, events[0].endTimeMs)
-        assertEquals(0.0, events[1].startTimeMs)
+        assertEquals(3_600_000.0, events[0].endTimeMs)
+        assertEquals(-1_800_000.0, events[1].startTimeMs)
+        assertEquals(3_600_000.0, events[0].durationMs)
+        assertEquals(3_600_000.0, events[1].durationMs)
+        assertTrue(events.all { it.hasOverlap })
+        assertTrue(events.all { it.isActive })
     }
 }
