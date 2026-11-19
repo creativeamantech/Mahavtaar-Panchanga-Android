@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "MahavtaarPanchangaAndroid"
-include(":shared")
+include(":shared", ":app")
