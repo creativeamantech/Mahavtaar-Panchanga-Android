@@ -247,10 +247,39 @@ class AstronomyEngineAdapterTest {
     }
 
     private fun jsonObjects(json: String, key: String): List<String> {
-        val array = Regex("\\\"$key\\\"\\s*:\\s*\\[(.*?)]", setOf(RegexOption.DOT_MATCHES_ALL))
-            .find(json)?.groupValues?.get(1) ?: error("Missing array fixture field: " + key)
-        return Regex("\\{([^{}]*)\\}", setOf(RegexOption.DOT_MATCHES_ALL))
-            .findAll(array).map { it.groupValues[1] }.toList()
+        val arrayStart = Regex("\\\"$key\\\"\\s*:\\s*\\[")
+            .find(json)?.range?.last?.plus(1) ?: error("Missing array fixture field: " + key)
+        val objects = mutableListOf<String>()
+        var depth = 0
+        var objectStart = -1
+        var inString = false
+        var escaped = false
+
+        for (index in arrayStart until json.length) {
+            val character = json[index]
+            if (inString) {
+                if (escaped) escaped = false
+                else if (character == '\\\\') escaped = true
+                else if (character == '"') inString = false
+                continue
+            }
+            when (character) {
+                '"' -> inString = true
+                '{' -> {
+                    if (depth == 0) objectStart = index + 1
+                    depth++
+                }
+                '}' -> {
+                    depth--
+                    if (depth == 0 && objectStart >= 0) {
+                        objects += json.substring(objectStart, index)
+                        objectStart = -1
+                    }
+                }
+                ']' -> if (depth == 0) return objects
+            }
+        }
+        return objects
     }
 
     private fun jsonBoolean(json: String, key: String): Boolean =
