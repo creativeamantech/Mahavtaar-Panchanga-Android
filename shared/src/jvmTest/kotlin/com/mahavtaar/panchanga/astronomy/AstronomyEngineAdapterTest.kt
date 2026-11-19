@@ -209,7 +209,7 @@ class AstronomyEngineAdapterTest {
             val metadata = adapter.calculate(
                 date = LocalDate.parse(jsonString(json, "date")),
                 sunriseMillis = jsonLong(json, "sunrise_ms"),
-                ayanamsaDegrees = jsonDouble(json, "ayanamsa_degrees"),
+                ayanamsaDegrees = if (mode == AyanamsaMode.TROPICAL) 0.0 else jsonDouble(json, "ayanamsa_degrees"),
                 monthSystem = monthSystem,
                 primaryTithiNumber = primaryTithi,
             )
