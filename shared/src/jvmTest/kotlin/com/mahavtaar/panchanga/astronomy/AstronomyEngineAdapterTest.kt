@@ -1,5 +1,7 @@
 package com.mahavtaar.panchanga.astronomy
 
+import com.mahavtaar.panchanga.core.findPanchangaSegments
+
 import java.io.File
 import java.time.LocalDate
 import java.time.ZoneId
@@ -75,6 +77,43 @@ class AstronomyEngineAdapterTest {
                 assertDegreesNear(fixture.name + ": " + id + " sidereal", expectedSidereal, actual.siderealLongitude)
                 assertEquals(expectedRetrograde, actual.isRetrograde, fixture.name + ": " + id + " retrograde flag differs")
             }
+        }
+    }
+
+
+    @Test
+    fun tithiAndKaranaSegmentsMatchTypeScriptGoldenReferencesAcrossTenCities() {
+        val corpusDir = File(System.getProperty("referenceCorpusDir"))
+        val cities = listOf(
+            "bhopal", "indore", "ujjain", "varanasi", "delhi",
+            "chennai", "london", "new-york", "singapore", "sydney",
+        )
+        val dates = listOf("2026-03-20", "2026-06-21", "2026-11-19")
+        val fixtureFiles = cities.flatMap { city ->
+            dates.map { date -> File(corpusDir, "$city-$date.json") }
+        }
+        val fractions = PanchangaFractionAdapter()
+
+        fixtureFiles.forEach { fixture ->
+            val json = fixture.readText()
+            val sunrise = jsonDouble(json, "sunrise_ms")
+            val nextSunrise = jsonDouble(json, "next_sunrise_ms")
+
+            val actualTithi = findPanchangaSegments(
+                sample = fractions::tithiFraction,
+                sunriseMs = sunrise,
+                nextSunriseMs = nextSunrise,
+                totalItems = 30,
+            )
+            val actualKarana = findPanchangaSegments(
+                sample = fractions::karanaFraction,
+                sunriseMs = sunrise,
+                nextSunriseMs = nextSunrise,
+                totalItems = 60,
+            )
+
+            assertSegmentsMatch(json, fixture.name, "tithi", actualTithi)
+            assertSegmentsMatch(json, fixture.name, "karana", actualKarana)
         }
     }
 
@@ -160,6 +199,53 @@ class AstronomyEngineAdapterTest {
             ?: error("Missing integer fixture field: " + key)
 
 
+
+    private fun assertSegmentsMatch(
+        fixtureJson: String,
+        fixtureName: String,
+        key: String,
+        actual: List<com.mahavtaar.panchanga.core.PanchangaSegmentBoundary>,
+    ) {
+        val expected = jsonObjects(fixtureJson, key)
+        assertEquals(expected.size, actual.size, fixtureName + ": " + key + " segment count differs")
+        expected.forEachIndexed { index, expectedJson ->
+            val actualSegment = actual[index]
+            assertEquals(
+                jsonLong(expectedJson, "number").toInt(),
+                actualSegment.number,
+                fixtureName + ": " + key + " segment " + index + " number differs",
+            )
+            assertEpochNullableNear(
+                fixtureName + ": " + key + " segment " + index + " start",
+                jsonNullableLong(expectedJson, "startTimeMs"),
+                actualSegment.startTimeMs,
+            )
+            assertEpochNullableNear(
+                fixtureName + ": " + key + " segment " + index + " end",
+                jsonNullableLong(expectedJson, "endTimeMs"),
+                actualSegment.endTimeMs,
+            )
+        }
+    }
+
+    private fun jsonNullableLong(json: String, key: String): Long? {
+        val match = Regex("\\\"$key\\\"\\s*:\\s*(null|-?\\d+(?:\\.\\d+)?)").find(json)
+            ?: return null
+        return match.groupValues[1].takeUnless { it == "null" }?.toDouble()?.toLong()
+    }
+
+    private fun assertEpochNullableNear(label: String, expected: Long?, actual: Double?) {
+        if (expected == null) {
+            assertNull(actual, label + " should be null")
+        } else {
+            assertNotNull(actual, label + " is missing")
+            assertTrue(
+                abs(actual - expected.toDouble()) <= MAX_BOUNDARY_DIFFERENCE_MILLIS,
+                label + " differs by " + abs(actual - expected.toDouble()) + " ms",
+            )
+        }
+    }
+
     private fun jsonObjects(json: String, key: String): List<String> {
         val array = Regex("\\\"$key\\\"\\s*:\\s*\\[(.*?)]", setOf(RegexOption.DOT_MATCHES_ALL))
             .find(json)?.groupValues?.get(1) ?: error("Missing array fixture field: " + key)
@@ -192,5 +278,6 @@ class AstronomyEngineAdapterTest {
     private companion object {
         const val MAX_EVENT_DIFFERENCE_MILLIS = 1_500L
         const val MAX_LONGITUDE_DIFFERENCE_DEGREES = 0.000001
+        const val MAX_BOUNDARY_DIFFERENCE_MILLIS = 1_000.0
     }
 }
