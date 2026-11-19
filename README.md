@@ -25,7 +25,7 @@ Android UI is native Kotlin + Jetpack Compose. Shared deterministic calculation 
 - Shared Kotlin Nakshatra Swara rule helper.
 - Shared Kotlin Hora schedule calculation (24 Horas, planetary sequence, day/night split, five Tattvas).
 - Common tests for deterministic rule tables and Hora/Tattva boundaries.
-- CI workflow for JVM tests, JS compilation, and Android debug APK assembly.
+- CI workflow for JVM tests, JS compilation, Android debug APK assembly, and APK artifact upload.
 
 The Compose shell deliberately does not display fabricated Panchanga values. It clearly indicates that the astronomical calculation adapter and reference validation are still being integrated.
 
@@ -40,18 +40,19 @@ The Compose shell deliberately does not display fabricated Panchanga values. It 
 
 ## Build
 
-The CI workflow currently uses Gradle 9.1.0 and Java 17.
+The CI workflow currently uses Gradle 9.3.1 and Java 17.
 
 - Shared JVM tests: `gradle :shared:jvmTest`
 - Shared JavaScript compilation: `gradle :shared:compileKotlinJs`
 - Android debug APK: `gradle :app:assembleDebug`
 
 Kotlin Multiplatform plugin: 2.4.21  
-Android Gradle Plugin: 9.0.0  
+Android Gradle Plugin: 9.1.0  
 Compose BOM: 2026.09.00  
-Android compile/target SDK: 36
+Android compile SDK: 37  
+Android target SDK: 36
 
-These versions are pinned in Gradle files and CI. CI results are the source of truth for build status.
+These versions are pinned in Gradle files and CI. CI results are the source of truth for build status. A successful workflow publishes `mahavtaar-panchanga-debug-apk` as a downloadable artifact for 14 days.
 
 ## Next engineering milestones
 
