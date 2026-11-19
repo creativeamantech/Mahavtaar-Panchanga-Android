@@ -42,6 +42,9 @@ class AstronomyEngineAdapter {
 
         val midnight = date.atStartOfDay(zoneId).toInstant()
         val midnightMs = midnight.toEpochMilli()
+        // Use the previous local civil midnight, not a fixed 24-hour subtraction.
+        // This preserves the correct date boundary across 23/25-hour DST days.
+        val previousMidnightMs = date.minusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
         val observer = Observer(latitude, longitude, elevationMeters)
 
         // Keep the TypeScript reference engine's search windows and target altitude:
@@ -52,7 +55,7 @@ class AstronomyEngineAdapter {
         )
         val previousSunrise = searchAltitude(
             Body.Sun, observer, Direction.Rise,
-            Time.fromMillisecondsSince1970(midnightMs - DAY_MILLIS), 1.0, 0.0,
+            Time.fromMillisecondsSince1970(previousMidnightMs), 1.0, 0.0,
         )
         val previousSunset = previousSunrise?.let {
             searchAltitude(Body.Sun, observer, Direction.Set, it, 1.0, 0.0)
@@ -100,7 +103,5 @@ class AstronomyEngineAdapter {
     private fun Time?.toInstantOrNull(): Instant? =
         this?.toMillisecondsSince1970()?.let(Instant::ofEpochMilli)
 
-    private companion object {
-        const val DAY_MILLIS = 86_400_000L
-    }
+
 }
