@@ -92,3 +92,26 @@ The 30-Tithi Swara table is explicit and should be ported as data, not re-create
 ## Audit status
 
 This is a source inspection, not a completed numerical validation. No Kotlin calculation code has been ported and no Android build or APK has been produced by this audit. The next engineering task is to build the versioned reference corpus and complete the astronomy dependency/API audit before choosing the Kotlin ephemeris implementation.
+
+
+## Astronomy dependency compatibility finding (2026-11-19)
+
+A concrete Kotlin implementation of the same upstream Astronomy Engine project exists:
+- Upstream: https://github.com/cosinekitty/astronomy
+- Kotlin module documentation: https://github.com/cosinekitty/astronomy/tree/master/source/kotlin
+- Published coordinate: `io.github.cosinekitty:astronomy:2.1.19`
+- The upstream Kotlin module is built with the Kotlin/JVM plugin (not a Kotlin Multiplatform common module).
+- Upstream project declares the MIT licence.
+- Upstream describes its accuracy target as within approximately 1 arcminute and says its implementations are cross-checked against NOVAS/JPL Horizons.
+
+### Architecture consequence
+
+This is a promising candidate for the Android astronomy adapter because it is the Kotlin implementation of the same Astronomy Engine family used by the TypeScript app. It is **not** evidence that the library can be called from `commonMain` or compiled to Kotlin/JS/Wasm.
+
+Recommended decision pending numerical parity tests:
+- Use the official Kotlin/JVM implementation behind an Android/JVM astronomy adapter if its APIs cover every call used by the current Panchanga engine and the golden corpus passes.
+- Keep deterministic calendar rules, Swara tables, Hora logic, domain models, and validation contracts in `commonMain` where they have no JVM-only dependency.
+- Keep ephemeris calls behind a narrow interface. Do not force the JVM library into `commonMain`.
+- If the web app later needs a common implementation, use a separate JS adapter backed by the existing JavaScript Astronomy Engine and enforce parity through shared golden vectors. A future full common-core port requires a separate, explicitly tested implementation decision.
+
+This refines the earlier KMP plan: KMP remains useful for platform-neutral rules and models, while the astronomy engine should initially be isolated behind platform-specific adapters. The exact Kotlin dependency version and Android compatibility must be verified in a real Gradle build before adoption.
