@@ -11,8 +11,9 @@ import java.time.ZoneId
 
 /**
  * Astronomical portion of a Panchanga day, assembled from source-compatible
- * adapters. Masa, Vaara, muhurta labels, and calendar-convention formatting
- * are intentionally not claimed by this first calculation snapshot.
+ * adapters. Masa number, weekday, era, Rashi and Ayana metadata are included;
+ * localized names, Ritu/Samvatsara labels, and muhurta/transit schedules remain
+ * separate work before the complete user-facing Panchanga response.
  */
 data class AstronomicalPanchangaSnapshot(
     val date: LocalDate,
