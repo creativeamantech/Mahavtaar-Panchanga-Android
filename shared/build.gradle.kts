@@ -14,7 +14,7 @@ kotlin {
         }
         val jvmMain by getting {
             dependencies {
-                implementation("com.github.cosinekitty:astronomy:2.1.19")
+                implementation("io.github.cosinekitty:astronomy:2.1.19")
             }
         }
         val jvmTest by getting {
