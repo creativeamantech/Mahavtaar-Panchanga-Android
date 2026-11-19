@@ -48,8 +48,8 @@ The CI workflow currently uses Gradle 9.3.1 and Java 17.
 
 Kotlin Multiplatform plugin: 2.4.21  
 Android Gradle Plugin: 9.1.0  
-Compose BOM: 2026.09.00  
-Android compile SDK: 37  
+Compose BOM: 2026.07.00  
+Android compile SDK: 36  
 Android target SDK: 36
 
 These versions are pinned in Gradle files and CI. CI results are the source of truth for build status. A successful workflow publishes `mahavtaar-panchanga-debug-apk` as a downloadable artifact for 14 days.
