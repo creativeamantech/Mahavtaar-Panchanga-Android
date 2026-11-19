@@ -1,6 +1,5 @@
 package com.mahavtaar.panchanga.astronomy
 
-import com.mahavtaar.panchanga.core.AyanamsaMode
 import com.mahavtaar.panchanga.core.MonthSystem
 import com.mahavtaar.panchanga.core.toSiderealLongitude
 import io.github.cosinekitty.astronomy.Body
