@@ -1,6 +1,7 @@
 package com.mahavtaar.panchanga.astronomy
 
 import com.mahavtaar.panchanga.core.AyanamsaMode
+import com.mahavtaar.panchanga.core.MonthSystem
 import com.mahavtaar.panchanga.core.PanchangaSegmentBoundary
 import com.mahavtaar.panchanga.core.calculateAyanamsa
 import com.mahavtaar.panchanga.core.findPanchangaSegments
@@ -20,6 +21,7 @@ data class AstronomicalPanchangaSnapshot(
     val longitude: Double,
     val coordinateSelection: AyanamsaMode,
     val events: AstronomicalDayEvents,
+    val calendar: PanchangaCalendarMetadata,
     val ayanamsaDegrees: Double,
     val planetaryPositions: List<PlanetaryPosition>,
     val tithi: List<PanchangaSegmentBoundary>,
@@ -36,6 +38,7 @@ class PanchangaCalculationAdapter(
     private val eventAdapter: AstronomyEngineAdapter = AstronomyEngineAdapter(),
     private val planetAdapter: PlanetaryPositionAdapter = PlanetaryPositionAdapter(),
     private val fractionAdapter: PanchangaFractionAdapter = PanchangaFractionAdapter(),
+    private val calendarAdapter: PanchangaCalendarAdapter = PanchangaCalendarAdapter(),
 ) {
     fun calculate(
         date: LocalDate,
@@ -43,6 +46,7 @@ class PanchangaCalculationAdapter(
         latitude: Double,
         longitude: Double,
         coordinateSelection: AyanamsaMode = AyanamsaMode.CITRA,
+        monthSystem: MonthSystem = MonthSystem.AMANTA,
         elevationMeters: Double = 0.0,
     ): AstronomicalPanchangaSnapshot {
         val events = eventAdapter.calculateDayEvents(
@@ -63,6 +67,19 @@ class PanchangaCalculationAdapter(
         val nextSunriseMillis = nextSunrise.toEpochMilli()
         val astronomyTime = Time.fromMillisecondsSince1970(sunriseMillis)
         val ayanamsa = calculateAyanamsa(astronomyTime.ut, coordinateSelection)
+        val tithiSegments = findPanchangaSegments(
+            sample = fractionAdapter::tithiFraction,
+            sunriseMs = sunriseMillis.toDouble(),
+            nextSunriseMs = nextSunriseMillis.toDouble(),
+            totalItems = 30,
+        )
+        val calendar = calendarAdapter.calculate(
+            date = date,
+            sunriseMillis = sunriseMillis,
+            ayanamsaDegrees = ayanamsa,
+            monthSystem = monthSystem,
+            primaryTithiNumber = tithiSegments.firstOrNull()?.number ?: 1,
+        )
 
         return AstronomicalPanchangaSnapshot(
             date = date,
@@ -71,14 +88,10 @@ class PanchangaCalculationAdapter(
             longitude = longitude,
             coordinateSelection = coordinateSelection,
             events = events,
+            calendar = calendar,
             ayanamsaDegrees = ayanamsa,
             planetaryPositions = planetAdapter.calculateAt(sunriseMillis, ayanamsa),
-            tithi = findPanchangaSegments(
-                sample = fractionAdapter::tithiFraction,
-                sunriseMs = sunriseMillis.toDouble(),
-                nextSunriseMs = nextSunriseMillis.toDouble(),
-                totalItems = 30,
-            ),
+            tithi = tithiSegments,
             nakshatra = findPanchangaSegments(
                 sample = { timeMs -> fractionAdapter.nakshatraFraction(timeMs, coordinateSelection) },
                 sunriseMs = sunriseMillis.toDouble(),
