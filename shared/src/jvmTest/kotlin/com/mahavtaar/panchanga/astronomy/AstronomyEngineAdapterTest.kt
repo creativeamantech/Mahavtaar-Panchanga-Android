@@ -1,6 +1,7 @@
 package com.mahavtaar.panchanga.astronomy
 
 import com.mahavtaar.panchanga.core.AyanamsaMode
+import com.mahavtaar.panchanga.core.MonthSystem
 import com.mahavtaar.panchanga.core.findPanchangaSegments
 
 import java.io.File
@@ -185,6 +186,59 @@ class AstronomyEngineAdapterTest {
             assertDegreesNear(fixture.name + ": combined " + id + " tropical", jsonDouble(expected, "longitude"), actual.tropicalLongitude)
             assertDegreesNear(fixture.name + ": combined " + id + " sidereal", jsonDouble(expected, "siderealLongitude"), actual.siderealLongitude)
             assertEquals(jsonBoolean(expected, "isRetrograde"), actual.isRetrograde)
+        }
+    }
+
+
+    @Test
+    fun calendarMetadataMatchesAllSourceGoldenReferences() {
+        val corpusDir = File(System.getProperty("referenceCorpusDir"))
+        val manifest = File(corpusDir, "manifest.json").readText()
+        val fixtureFiles = jsonObjects(manifest, "fixtures").map { entry ->
+            File(corpusDir, jsonString(entry, "file"))
+        }
+        assertEquals(41, fixtureFiles.size)
+
+        val adapter = PanchangaCalendarAdapter()
+        fixtureFiles.forEach { fixture ->
+            val json = fixture.readText()
+            val tithiSegments = jsonObjects(json, "tithi")
+            val primaryTithi = jsonLong(tithiSegments.first(), "number").toInt()
+            val mode = AyanamsaMode.valueOf(jsonString(json, "coordinateSelection").uppercase())
+            val monthSystem = MonthSystem.valueOf(jsonString(json, "monthSystem").uppercase())
+            val metadata = adapter.calculate(
+                date = LocalDate.parse(jsonString(json, "date")),
+                sunriseMillis = jsonLong(json, "sunrise_ms"),
+                ayanamsaDegrees = jsonDouble(json, "ayanamsa_degrees"),
+                monthSystem = monthSystem,
+                primaryTithiNumber = primaryTithi,
+            )
+
+            assertEquals(jsonLong(json, "masa_number").toInt(), metadata.displayMasaNumber, fixture.name + ": masa")
+            assertEquals(jsonBoolean(json, "is_adhika"), metadata.isAdhika, fixture.name + ": adhika")
+            assertEquals(jsonLong(json, "weekday").toInt(), metadata.weekdaySundayZero, fixture.name + ": weekday")
+            assertEquals(jsonLong(json, "kali_day"), metadata.kaliDay, fixture.name + ": Kali day")
+            assertEquals(jsonLong(json, "saka_year").toInt(), metadata.sakaYear, fixture.name + ": Saka year")
+            assertEquals(jsonLong(json, "kali_year").toInt(), metadata.kaliYear, fixture.name + ": Kali year")
+            assertEquals(jsonLong(json, "vikrama_year").toInt(), metadata.vikramaYear, fixture.name + ": Vikrama year")
+            assertEquals(primaryTithi <= 15, metadata.paksha == "Shukla", fixture.name + ": paksha")
+            assertEquals(jsonString(json, "ayana").startsWith("Uttar"), metadata.ayanaNorth, fixture.name + ": ayana")
+            assertEquals(jsonString(json, "drik_ayana").startsWith("Uttar"), metadata.drikAyanaNorth, fixture.name + ": Drik ayana")
+            assertTrue(kotlin.math.abs(jsonDouble(json, "jd") - metadata.julianDay) < 0.00002, fixture.name + ": Julian day")
+
+            val planets = jsonObjects(json, "planets").associate { planet ->
+                jsonString(planet, "id") to planet
+            }
+            assertEquals(
+                jsonLong(planets.getValue("sun"), "rasiNumber").toInt(),
+                metadata.sunRashiNumber,
+                fixture.name + ": Sun Rashi",
+            )
+            assertEquals(
+                jsonLong(planets.getValue("moon"), "rasiNumber").toInt(),
+                metadata.moonRashiNumber,
+                fixture.name + ": Moon Rashi",
+            )
         }
     }
 
