@@ -42,9 +42,9 @@ class AstronomyEngineAdapter {
 
         val midnight = date.atStartOfDay(zoneId).toInstant()
         val midnightMs = midnight.toEpochMilli()
-        // Use the previous local civil midnight, not a fixed 24-hour subtraction.
-        // This preserves the correct date boundary across 23/25-hour DST days.
-        val previousMidnightMs = date.minusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
+        // Match the TypeScript reference engine exactly: its local-midnight
+        // timestamp is shifted back by a fixed 24 hours for the previous search.
+        val previousSearchStartMs = midnightMs - DAY_MILLIS
         val observer = Observer(latitude, longitude, elevationMeters)
 
         // Keep the TypeScript reference engine's search windows and target altitude:
@@ -55,7 +55,7 @@ class AstronomyEngineAdapter {
         )
         val previousSunrise = searchAltitude(
             Body.Sun, observer, Direction.Rise,
-            Time.fromMillisecondsSince1970(previousMidnightMs), 1.0, 0.0,
+            Time.fromMillisecondsSince1970(previousSearchStartMs), 1.0, 0.0,
         )
         val previousSunset = previousSunrise?.let {
             searchAltitude(Body.Sun, observer, Direction.Set, it, 1.0, 0.0)
@@ -79,9 +79,10 @@ class AstronomyEngineAdapter {
             Body.Moon, observer, Direction.Set,
             Time.fromMillisecondsSince1970(midnightMs), 1.0, 0.0,
         )
-        val nextMidnightMs = date.plusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
+        // The source engine filters lunar events to [localMidnight, localMidnight + 24h).
+        val endOfReferenceDayMs = midnightMs + DAY_MILLIS
         val moonrise = moonriseCandidate?.toInstantOrNull()?.takeIf {
-            it.toEpochMilli() in midnightMs until nextMidnightMs
+            it.toEpochMilli() in midnightMs until endOfReferenceDayMs
         }
         val moonset = moonsetCandidate?.toInstantOrNull()?.takeIf {
             it.toEpochMilli() in midnightMs until nextMidnightMs
@@ -103,5 +104,7 @@ class AstronomyEngineAdapter {
     private fun Time?.toInstantOrNull(): Instant? =
         this?.toMillisecondsSince1970()?.let(Instant::ofEpochMilli)
 
-
+    private companion object {
+        const val DAY_MILLIS = 86_400_000L
+    }
 }
