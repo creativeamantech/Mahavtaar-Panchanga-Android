@@ -1,5 +1,6 @@
 package com.mahavtaar.panchanga.astronomy
 
+import com.mahavtaar.panchanga.core.AyanamsaMode
 import com.mahavtaar.panchanga.core.findPanchangaSegments
 
 import java.io.File
@@ -114,6 +115,41 @@ class AstronomyEngineAdapterTest {
 
             assertSegmentsMatch(json, fixture.name, "tithi", actualTithi)
             assertSegmentsMatch(json, fixture.name, "karana", actualKarana)
+        }
+    }
+
+
+    @Test
+    fun nakshatraAndYogaSegmentsMatchAllSourceGoldenReferences() {
+        val corpusDir = File(System.getProperty("referenceCorpusDir"))
+        val manifest = File(corpusDir, "manifest.json").readText()
+        val fixtureFiles = jsonObjects(manifest, "fixtures").map { entry ->
+            File(corpusDir, jsonString(entry, "file"))
+        }
+        assertEquals(41, fixtureFiles.size)
+
+        val fractions = PanchangaFractionAdapter()
+        fixtureFiles.forEach { fixture ->
+            val json = fixture.readText()
+            val mode = AyanamsaMode.valueOf(jsonString(json, "coordinateSelection").uppercase())
+            val sunrise = jsonDouble(json, "sunrise_ms")
+            val nextSunrise = jsonDouble(json, "next_sunrise_ms")
+
+            val actualNakshatra = findPanchangaSegments(
+                sample = { timeMs -> fractions.nakshatraFraction(timeMs, mode) },
+                sunriseMs = sunrise,
+                nextSunriseMs = nextSunrise,
+                totalItems = 27,
+            )
+            val actualYoga = findPanchangaSegments(
+                sample = { timeMs -> fractions.yogaFraction(timeMs, mode) },
+                sunriseMs = sunrise,
+                nextSunriseMs = nextSunrise,
+                totalItems = 27,
+            )
+
+            assertSegmentsMatch(json, fixture.name, "nakshatra", actualNakshatra)
+            assertSegmentsMatch(json, fixture.name, "yoga", actualYoga)
         }
     }
 
