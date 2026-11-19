@@ -245,7 +245,7 @@ class AstronomyEngineAdapterTest {
                 while (end < json.length) {
                     val current = json[end]
                     if (escaped) escaped = false
-                    else if (current == '\\\\') escaped = true
+                    else if (current == '\\') escaped = true
                     else if (current == '"') break
                     end++
                 }
