@@ -259,7 +259,7 @@ class AstronomyEngineAdapterTest {
             val character = json[index]
             if (inString) {
                 if (escaped) escaped = false
-                else if (character == '\\\\') escaped = true
+                else if (character == '\\') escaped = true
                 else if (character == '"') inString = false
                 continue
             }
