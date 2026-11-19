@@ -5,13 +5,14 @@ Updated: 2026-11-19
 ## First source-engine capture
 
 - Source repository: `creativeamantech/mahavtaarpanchanga`
-- Exact source commit: `be8bb6681123bef670b0d7a83c900178935df7a3`
+- Exact source commit: `e65f81caa7fedad0bcbfaf59335d70d8729d39a4`
 - Engine: `src/lib/panchangaEngine.server.ts`
 - Astronomy dependency: `astronomy-engine 2.1.19`
 - Captured fixtures: **41**
-- Capture workflow: https://github.com/creativeamantech/mahavtaarpanchanga/actions/runs/44486591667
+- Capture workflow: https://github.com/creativeamantech/mahavtaarpanchanga/actions/runs/44486833059
 - Artifact name: `panchanga-golden-reference-v1`
 - Artifact retention: 30 days
+- Permanent fixture files: `reference/panchanga/v1/` in the source repository at commit `088035ddea6c9757f09e77fb4f30bd2657ef2d32`
 
 The workflow completed successfully. It generated full source-engine responses and a manifest. Fixtures are generated exclusively by the TypeScript reference engine; no Kotlin values are used to populate expected output.
 
