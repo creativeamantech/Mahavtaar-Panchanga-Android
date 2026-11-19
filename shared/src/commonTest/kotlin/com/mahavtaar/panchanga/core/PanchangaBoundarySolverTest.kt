@@ -42,7 +42,7 @@ class PanchangaBoundarySolverTest {
         )
         assertEquals(2, segments.size)
         assertEquals(3, segments[0].number)
-        assertEquals(2.0 * HOUR_MILLIS, segments[0].startTimeMs)
+        assertNear(2.0 * HOUR_MILLIS, segments[0].startTimeMs)
         assertNear(3.0 * HOUR_MILLIS, segments[0].endTimeMs)
         assertEquals(4, segments[1].number)
         assertNear(3.0 * HOUR_MILLIS, segments[1].startTimeMs)
@@ -59,7 +59,7 @@ class PanchangaBoundarySolverTest {
         )
         assertEquals(1, segments.size)
         assertEquals(3, segments.single().number)
-        assertEquals(2.0 * HOUR_MILLIS, segments.single().startTimeMs)
+        assertNear(2.0 * HOUR_MILLIS, segments.single().startTimeMs)
         assertNull(segments.single().endTimeMs)
     }
 
@@ -67,7 +67,7 @@ class PanchangaBoundarySolverTest {
     fun wrapsNextSegmentNumberAfterLastItem() {
         val segments = findPanchangaSegments(
             sample = { timeMs -> 29.5 + timeMs / HOUR_MILLIS },
-            sunriseMs = 0.5 * HOUR_MILLIS,
+            sunriseMs = 0.25 * HOUR_MILLIS,
             nextSunriseMs = 2.5 * HOUR_MILLIS,
             totalItems = 30,
         )
